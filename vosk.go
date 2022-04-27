@@ -12,9 +12,7 @@ import (
 	"net/url"
 )
 
-const buffsize = 8000
-
-//VoskResult ...
+// VoskResult represents a partial o complete response from vosk server
 type VoskResult struct {
 	Result []struct {
 		Conf  float64
@@ -22,7 +20,8 @@ type VoskResult struct {
 		Start float64
 		Word  string
 	}
-	Text string
+	Text    string
+	Partial string
 }
 
 // VoskService provides information to Vosk Speech Recognizer
@@ -69,7 +68,9 @@ func NewVoskService(host string, port string, phraseList []string) (*VoskService
 	return &v, nil
 }
 
-//StartStreaming ...
+// StartStreaming takes a reading channel of audio stream and sends it
+// as a gRPC request to Vosk service through the initialized client.
+// Caller should run it in a goroutine.
 func (v *VoskService) StartStreaming(ctx context.Context, stream <-chan []byte) <-chan error {
 	v.errorStream = make(chan error)
 
@@ -80,6 +81,7 @@ func (v *VoskService) StartStreaming(ctx context.Context, stream <-chan []byte) 
 		for {
 			select {
 			case <-ctx.Done():
+				v.Close()
 				return
 
 			case buf := <-stream:
@@ -126,7 +128,7 @@ func (v *VoskService) SpeechToTextResponse(ctx context.Context) <-chan VoskResul
 					v.errorStream <- err
 					return
 				}
-				if m.Text != "" {
+				if m.Text != "" || m.Partial != "" {
 					voskResultStream <- m
 				}
 			}
