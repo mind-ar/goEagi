@@ -1,4 +1,4 @@
-module github.com/andrewyang17/goEagi
+module github.com/mind-ar/goEagi
 
 go 1.18
 
